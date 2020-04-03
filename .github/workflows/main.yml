@@ -1,0 +1,14 @@
+name: 'main'
+on:
+  push
+
+jobs:
+  comment_if_files_changed:
+    runs-on: ubuntu-latest
+    name: Comment on push with changed files
+    steps:
+      - name: Hello world action step
+        id: hello
+        uses: BusseBu/action-comment-on-push-with-changed-files@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
