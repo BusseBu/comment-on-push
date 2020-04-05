@@ -1,4 +1,27 @@
 # Reply to comments on push with updated files
 
-When someone left a comment asking you to fix something in your pull request and you do it, it is hard for a reviewer to find the exact comment which contained the fix.
+When someone has left a comment asking you to fix something in your pull request and you do it, it is hard for a reviewer to find the exact commit which contained the fix.
 This action reacts on each push, find comments, associated with the pull request - and replies to them with links to new commits.
+
+## Usage
+
+Create a workflow (eg: `.github/workflows/comment-on-push.yml` see [Creating a Workflow file](https://help.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#creating-a-workflow-file)):
+
+```
+name: 'Comment on push'
+on:
+  push
+
+jobs:
+  comment_if_files_changed:
+    runs-on: ubuntu-latest
+    name: Comment on push with changed files
+    steps:
+      - name: Hello world action step
+        uses: BusseBu/comment-on-push@master
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+_Note: This grants access to the `GITHUB_TOKEN` so the action can make calls to GitHub's rest API_
+
