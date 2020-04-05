@@ -11,4 +11,4 @@ jobs:
         id: hello
         uses: BusseBu/action-comment-on-push-with-changed-files@master
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
