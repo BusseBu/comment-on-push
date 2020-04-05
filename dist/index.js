@@ -3725,55 +3725,38 @@ const github = __importStar(__webpack_require__(469));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const token = core.getInput('repo-token');
-            const octokit = new github.GitHub(token);
+            const token = core.getInput('repo-token', { required: true });
+            const client = new github.GitHub(token);
             const { commits, repository } = github.context.payload;
             const owner = repository.owner.login;
             const repo = repository.name;
             // We have to get detailed commits because default ones do not have any information about files changed
-            const commitsWithFilesRequests = commits.map((commit) => __awaiter(this, void 0, void 0, function* () {
-                return octokit.repos.getCommit({
-                    ref: commit.id,
-                    owner,
-                    repo
-                });
-            }));
             core.debug('Getting detailed commits from the push');
-            const commitsWithFiles = (yield Promise.all(commitsWithFilesRequests)).map(result => result.data);
+            const detailedCommits = yield getDetailedCommits(client, commits, owner, repo);
             // getting pull requests associated with each commit, leaving only unique
-            const pullRequestsRequests = commitsWithFiles.map((commit) => __awaiter(this, void 0, void 0, function* () {
-                return octokit.repos.listPullRequestsAssociatedWithCommit({
-                    commit_sha: commit.sha,
-                    owner,
-                    repo
-                });
-            }));
             core.debug('Getting pull requests associated with each commit');
-            const pullRequests = (yield Promise.all(pullRequestsRequests))
-                .map(result => result.data)
-                .reduce((acc, prs) => [...acc, ...prs], []);
+            const pullRequests = yield getPullRequests(client, detailedCommits, owner, repo);
+            if (!pullRequests.length) {
+                console.log('No pull requests, associated with commits found. Exiting...');
+                return;
+            }
             // getting rootComments for each pull request
-            const commentRequests = pullRequests.map((pullRequest) => __awaiter(this, void 0, void 0, function* () {
-                return octokit.pulls.listComments({
-                    pull_number: pullRequest.number,
-                    owner,
-                    repo
-                });
-            }));
             core.debug('Getting root comments for each pull request');
-            const rootComments = (yield Promise.all(commentRequests))
-                .map(result => result.data)
-                .reduce((acc, rc) => [...acc, ...rc], [])
-                .filter(comment => !(comment.in_reply_to_id || !comment.path));
+            const rootComments = yield getRootComments(client, pullRequests, owner, repo);
+            if (!rootComments.length) {
+                console.log('No comments, associated with pull requests found. Exiting...');
+                return;
+            }
             // synchronous because async posting sometimes gives errors
             for (const comment of rootComments) {
-                const uniqueCommitsWithFiles = commitsWithFiles.filter(commit => commit.files.some(file => file.filename === comment.path));
+                const commitsWithFileFromComment = detailedCommits.filter(commit => commit.files.some(file => file.filename === comment.path));
                 const pullRequest = pullRequests.find(pr => pr.url === comment.pull_request_url);
                 if (!pullRequest) {
-                    throw new Error('Could not find pull request associated with the comment');
+                    console.log(`Could not find pull request associated with the comment ${comment.id}.`);
+                    continue;
                 }
-                const commitLinks = uniqueCommitsWithFiles.map(commit => `[${commit.sha}](https://github.com/${repository.owner.name}/${repository.name}/pull/${pullRequest.number}/commits/${commit.sha})`);
-                yield octokit.pulls.createReviewCommentReply({
+                const commitLinks = commitsWithFileFromComment.map(commit => `[${commit.sha}](https://github.com/${repository.owner.name}/${repository.name}/pull/${pullRequest.number}/commits/${commit.sha})`);
+                yield client.pulls.createReviewCommentReply({
                     body: `This file was changed in the following commits: ${commitLinks.join(', ')}.`,
                     comment_id: comment.id,
                     pull_number: pullRequest.number,
@@ -3787,6 +3770,41 @@ function run() {
         }
     });
 }
+const getDetailedCommits = (client, commits, owner, repo) => __awaiter(void 0, void 0, void 0, function* () {
+    const commitsWithFilesRequests = commits.map((commit) => __awaiter(void 0, void 0, void 0, function* () {
+        return client.repos.getCommit({
+            ref: commit.id,
+            owner,
+            repo
+        });
+    }));
+    return (yield Promise.all(commitsWithFilesRequests)).map(result => result.data);
+});
+const getPullRequests = (client, commits, owner, repo) => __awaiter(void 0, void 0, void 0, function* () {
+    const pullRequestsRequests = commits.map((commit) => __awaiter(void 0, void 0, void 0, function* () {
+        return client.repos.listPullRequestsAssociatedWithCommit({
+            commit_sha: commit.sha,
+            owner,
+            repo
+        });
+    }));
+    return (yield Promise.all(pullRequestsRequests))
+        .map(result => result.data)
+        .reduce((acc, prs) => [...acc, ...prs], []);
+});
+const getRootComments = (client, pullRequests, owner, repo) => __awaiter(void 0, void 0, void 0, function* () {
+    const commentRequests = pullRequests.map((pullRequest) => __awaiter(void 0, void 0, void 0, function* () {
+        return client.pulls.listComments({
+            pull_number: pullRequest.number,
+            owner,
+            repo
+        });
+    }));
+    return (yield Promise.all(commentRequests))
+        .map(result => result.data)
+        .reduce((acc, rc) => [...acc, ...rc], [])
+        .filter(comment => !(comment.in_reply_to_id || !comment.path));
+});
 run();
 
 
