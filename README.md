@@ -20,11 +20,11 @@ jobs:
       - name: Hello world action step
         uses: BusseBu/comment-on-push@master
         with:
-          pattern: Example pattern to .test commit message against
+          pattern: ^post-review fixes$
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-A pattern should be specified if you want only certain commits which message follows the pattern to be analyzed.
+A pattern should be specified if you want only certain commits with message following the pattern to be analyzed. It is optional.
 
 _Note: This grants access to the `GITHUB_TOKEN` so the action can make calls to GitHub's rest API_
 
