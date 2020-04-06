@@ -3726,14 +3726,22 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const token = core.getInput('repo-token', { required: true });
+            const pattern = core.getInput('pattern');
             const client = new github.GitHub(token);
             const { commits, repository } = github.context.payload;
             const owner = repository.owner.login;
             const repo = repository.name;
-            // We have to get detailed commits because default ones do not have any information about files changed
+            const commitsFollowingPattern = pattern
+                ? commits.filter(commit => new RegExp(pattern).test(commit.message))
+                : commits;
+            if (!commitsFollowingPattern.length) {
+                console.log(`No commits following the provided pattern: ${pattern}. Exiting...`);
+                return;
+            }
+            // we have to get detailed commits because default ones do not have any information about files changed
             core.debug('Getting detailed commits from the push');
-            const detailedCommits = yield getDetailedCommits(client, commits, owner, repo);
-            // getting pull requests associated with each commit, leaving only unique
+            const detailedCommits = yield getDetailedCommits(client, commitsFollowingPattern, owner, repo);
+            // getting pull requests associated with each commit
             core.debug('Getting pull requests associated with each commit');
             const pullRequests = yield getPullRequests(client, detailedCommits, owner, repo);
             if (!pullRequests.length) {
