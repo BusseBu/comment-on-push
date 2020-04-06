@@ -1,6 +1,6 @@
 {
   "name": "action-comment-on-push-with-changed-files",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "This is a github action to post a reply to comments in PRs if file to which the comment was left has been changed",
   "main": "lib/main.js",
